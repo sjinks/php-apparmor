@@ -13,9 +13,11 @@
 #	error "Fatal: <sys/apparmor.h> header is missing"
 #endif
 
+/*
 #ifdef ZTS
 #	error "ZTS is currently not supported"
 #endif
+*/
 
 #define PHP_APPARMOR_EXTNAME    "AppArmor"
 #define PHP_APPARMOR_EXTVER     "0.1"
