@@ -223,7 +223,7 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 	}
 
 	if (EXPECTED(idx)) {
-#if 0
+#ifdef DEBUG_PHPAA
 		for (size_t i=0; i<idx; ++i) {
 			printf("%s\n", subprofiles[i]);
 		}
