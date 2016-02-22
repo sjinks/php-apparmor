@@ -145,17 +145,17 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 		zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("SCRIPT_NAME"),    zend_inline_hash_func(ZEND_STRS("SCRIPT_NAME")),    (void**)&script_name);
 		zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("SERVER_NAME"),    zend_inline_hash_func(ZEND_STRS("SERVER_NAME")),    (void**)&server_name);
 
-		if (request_method && Z_TYPE_PP(request_method) == IS_STRING) {
+		if (request_method && Z_TYPE_PP(request_method) == IS_STRING && Z_STRLEN_PP(request_method) > 0) {
 			req_m     = Z_STRVAL_PP(request_method);
 			req_m_len = Z_STRLEN_PP(request_method);
 		}
 
-		if (script_name && Z_TYPE_PP(script_name) == IS_STRING) {
+		if (script_name && Z_TYPE_PP(script_name) == IS_STRING && Z_STRLEN_PP(script_name) > 0) {
 			scr_n     = Z_STRVAL_PP(script_name);
 			scr_n_len = Z_STRLEN_PP(script_name);
 		}
 
-		if (server_name && Z_TYPE_PP(server_name) == IS_STRING) {
+		if (server_name && Z_TYPE_PP(server_name) == IS_STRING && Z_STRLEN_PP(server_name) > 0) {
 			srv_n     = Z_STRVAL_PP(server_name);
 			srv_n_len = Z_STRLEN_PP(server_name);
 		}
@@ -164,23 +164,23 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 		zval* script_name    = zend_hash_find(Z_ARRVAL(server), zs_SCRIPT_NAME);
 		zval* server_name    = zend_hash_find(Z_ARRVAL(server), zs_SERVER_NAME);
 
-		if (request_method && Z_TYPE_P(request_method) == IS_STRING) {
+		if (request_method && Z_TYPE_P(request_method) == IS_STRING && Z_STRLEN_P(request_method) > 0) {
 			req_m     = Z_STRVAL_P(request_method);
 			req_m_len = Z_STRLEN_P(request_method);
 		}
 
-		if (script_name && Z_TYPE_P(script_name) == IS_STRING) {
+		if (script_name && Z_TYPE_P(script_name) == IS_STRING && Z_STRLEN_P(script_name) > 0) {
 			scr_n     = Z_STRVAL_P(script_name);
 			scr_n_len = Z_STRLEN_P(script_name);
 		}
 
-		if (server_name && Z_TYPE_P(server_name) == IS_STRING) {
+		if (server_name && Z_TYPE_P(server_name) == IS_STRING && Z_STRLEN_P(server_name) > 0) {
 			srv_n     = Z_STRVAL_P(server_name);
 			srv_n_len = Z_STRLEN_P(server_name);
 		}
 #endif
 
-		if (request_method && server_name && script_name) {
+		if (req_m && srv_n && scr_n) {
 			mss = emalloc(req_m_len + 1 + srv_n_len + 1 + scr_n_len + 1);
 			memcpy(mss, req_m, req_m_len);
 			memcpy(mss + req_m_len + 1, srv_n, srv_n_len);
@@ -191,7 +191,7 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 			subprofiles[idx++] = mss;
 		}
 
-		if (server_name && script_name) {
+		if (srv_n && scr_n) {
 			ss = emalloc(srv_n_len + 1 + scr_n_len + 1);
 			memcpy(ss, srv_n, srv_n_len);
 			memcpy(ss + srv_n_len + 1, scr_n, scr_n_len + 1);
@@ -200,11 +200,11 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 			subprofiles[idx++] = ss;
 		}
 
-		if (server_name) {
+		if (srv_n) {
 			subprofiles[idx++] = srv_n;
 		}
 
-		if (request_method && script_name) {
+		if (req_m && scr_n) {
 			ms = emalloc(req_m_len + 1 + scr_n_len + 1);
 			memcpy(ms, req_m, req_m_len);
 			memcpy(ms + req_m_len + 1, scr_n, scr_n_len + 1);
@@ -213,7 +213,7 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 			subprofiles[idx++] = ms;
 		}
 
-		if (script_name) {
+		if (scr_n) {
 			subprofiles[idx++] = scr_n;
 		}
 	}
