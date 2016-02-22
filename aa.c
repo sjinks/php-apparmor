@@ -78,7 +78,11 @@ unsigned long int generate_token(void)
 */
 static void do_change_hat(unsigned long int* token TSRMLS_DC)
 {
+#if PHP_MAJOR_VERSION < 7
 	zval* server           = PG(http_globals)[TRACK_VARS_SERVER];
+#else
+	zval* server           = &PG(http_globals)[TRACK_VARS_SERVER];
+#endif
 	char* default_hat_name = AAG(default_hat_name);
 	char* hat_name         = AAG(hat_name);
 	char* mss              = NULL;
@@ -216,7 +220,11 @@ static PHP_RINIT_FUNCTION(apparmor)
 #endif
 	}
 
+#if PHP_MAJOR_VERSION < 7
 	server = PG(http_globals)[TRACK_VARS_SERVER];
+#else
+	server = &PG(http_globals)[TRACK_VARS_SERVER];
+#endif
 	if (Z_TYPE_P(server) != IS_ARRAY) {
 		return SUCCESS;
 	}
