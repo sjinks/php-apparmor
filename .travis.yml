@@ -17,3 +17,4 @@ install:
 
 script:
   - phpize && ./configure --silent && make --silent CFLAGS+="-Wall -Wextra -Wno-unused-parameter"
+  - php -i | grep -F 'aa.'
