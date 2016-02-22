@@ -9,6 +9,7 @@ phpize
 make --silent CFLAGS+="-Wall -Wextra -Wno-unused-parameter -DDEBUG_PHP_AA"
 
 phpenv config-add "$DIR/apparmor.ini"
+make install
 
 php -i > /dev/null
 php -m > /dev/null
