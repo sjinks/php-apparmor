@@ -76,14 +76,9 @@ unsigned long int generate_token(void)
 /*
 * hat_name, METHOD-SERVER-SCRIPT, SERVER-SCRIPT, SERVER, METHOD-SCRIPT, SCRIPT, default_hat_name
 */
-static void do_change_hat(
-#if PHP_MAJOR_VERSION < 7
-	zval** server, unsigned long int* token TSRMLS_DC
-#else
-	zval* server, unsigned long int* token TSRMLS_DC
-#endif
-)
+static void do_change_hat(unsigned long int* token TSRMLS_DC)
 {
+	zval* server           = PG(http_globals)[TRACK_VARS_SERVER];
 	char* default_hat_name = AAG(default_hat_name);
 	char* hat_name         = AAG(hat_name);
 	char* mss              = NULL;
@@ -109,9 +104,9 @@ static void do_change_hat(
 		zval** script_name     = NULL;
 		zval** server_name     = NULL;
 
-		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("REQUEST_METHOD"), zend_inline_hash_func(ZEND_STRS("REQUEST_METHOD")), (void**)&request_method);
-		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SCRIPT_NAME"),    zend_inline_hash_func(ZEND_STRS("SCRIPT_NAME")),    (void**)&script_name);
-		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SERVER_NAME"),    zend_inline_hash_func(ZEND_STRS("SERVER_NAME")),    (void**)&server_name);
+		zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("REQUEST_METHOD"), zend_inline_hash_func(ZEND_STRS("REQUEST_METHOD")), (void**)&request_method);
+		zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("SCRIPT_NAME"),    zend_inline_hash_func(ZEND_STRS("SCRIPT_NAME")),    (void**)&script_name);
+		zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("SERVER_NAME"),    zend_inline_hash_func(ZEND_STRS("SERVER_NAME")),    (void**)&server_name);
 
 		if (request_method && Z_TYPE_PP(request_method) == IS_STRING) {
 			req_m     = Z_STRVAL_PP(request_method);
@@ -191,6 +186,11 @@ static void do_change_hat(
 	}
 
 	if (idx) {
+#if 0
+		for (size_t i=0; i<idx; ++i) {
+			printf("%s\n", subprofiles[i]);
+		}
+#endif
 		subprofiles[idx] = NULL;
 		if (-1 == aa_change_hatv(subprofiles, *token)) {
 			aa_change_hat(NULL, *token);
@@ -206,11 +206,7 @@ static void do_change_hat(
 static PHP_RINIT_FUNCTION(apparmor)
 {
 	unsigned long int token;
-#if PHP_MAJOR_VERSION < 7
-	zval** server;
-#else
 	zval* server;
-#endif
 
 	if (PG(auto_globals_jit)) {
 #if PHP_MAJOR_VERSION < 7
@@ -220,24 +216,20 @@ static PHP_RINIT_FUNCTION(apparmor)
 #endif
 	}
 
-#if PHP_MAJOR_VERSION < 7
-	if (SUCCESS != zend_hash_quick_find(&EG(symbol_table), ZEND_STRS("_SERVER"), zend_inline_hash_func(ZEND_STRS("_SERVER")), (void**)&server) || Z_TYPE_PP(server) != IS_ARRAY) {
-		server = NULL;
+	server = PG(http_globals)[TRACK_VARS_SERVER];
+	if (Z_TYPE_P(server) != IS_ARRAY) {
+		return SUCCESS;
 	}
 
+#if PHP_MAJOR_VERSION < 7
 	if (AAG(allow_server_aa) && server) {
 		zval** aa_hat_name;
 
-		if (SUCCESS == zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("AA_HAT_NAME"), zend_inline_hash_func(ZEND_STRS("AA_HAT_NAME")), (void**)&aa_hat_name) && Z_TYPE_PP(aa_hat_name) == IS_STRING) {
+		if (SUCCESS == zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("AA_HAT_NAME"), zend_inline_hash_func(ZEND_STRS("AA_HAT_NAME")), (void**)&aa_hat_name) && Z_TYPE_PP(aa_hat_name) == IS_STRING) {
 			zend_alter_ini_entry_ex(ZEND_STRS("aa.hat_name"), Z_STRVAL_PP(aa_hat_name), Z_STRLEN_PP(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1 TSRMLS_CC);
 		}
 	}
 #else
-	server = zend_hash_str_find(&EG(symbol_table), ZEND_STRL("_SERVER"));
-	if (server && Z_TYPE_P(server) != IS_ARRAY) {
-		server = NULL;
-	}
-
 	if (AAG(allow_server_aa) && server) {
 		zval* aa_hat_name = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("AA_HAT_NAME"));
 		if (aa_hat_name && Z_TYPE_P(aa_hat_name) == IS_STRING) {
@@ -253,7 +245,7 @@ static PHP_RINIT_FUNCTION(apparmor)
 		return FAILURE;
 	}
 
-	do_change_hat(server, &token TSRMLS_CC);
+	do_change_hat(&token TSRMLS_CC);
 	AAG(magic_token) = token;
 	return SUCCESS;
 }
