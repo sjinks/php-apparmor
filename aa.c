@@ -76,66 +76,114 @@ unsigned long int generate_token(void)
 /*
 * hat_name, METHOD-SERVER-SCRIPT, SERVER-SCRIPT, SERVER, METHOD-SCRIPT, SCRIPT, default_hat_name
 */
-static void do_change_hat(zval** server, unsigned long int* token TSRMLS_DC)
+static void do_change_hat(
+#if PHP_MAJOR_VERSION < 7
+	zval** server, unsigned long int* token TSRMLS_DC
+#else
+	zval* server, unsigned long int* token TSRMLS_DC
+#endif
+)
 {
 	char* default_hat_name = AAG(default_hat_name);
 	char* hat_name         = AAG(hat_name);
-	zval** request_method  = NULL;
-	zval** script_name     = NULL;
-	zval** server_name     = NULL;
+	char* mss              = NULL;
+	char* ss               = NULL;
+	char* ms               = NULL;
+	size_t idx             = 0;
 	const char* subprofiles[8];
-	char* mss = NULL;
-	char* ss  = NULL;
-	char* ms  = NULL;
-	size_t idx = 0;
-
-	zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("REQUEST_METHOD"), zend_inline_hash_func(ZEND_STRS("REQUEST_METHOD")), (void**)&request_method);
-	zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SCRIPT_NAME"),    zend_inline_hash_func(ZEND_STRS("SCRIPT_NAME")),    (void**)&script_name);
-	zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SERVER_NAME"),    zend_inline_hash_func(ZEND_STRS("SERVER_NAME")),    (void**)&server_name);
-
-	if (Z_TYPE_PP(request_method) != IS_STRING) request_method = NULL;
-	if (Z_TYPE_PP(script_name)    != IS_STRING) script_name    = NULL;
-	if (Z_TYPE_PP(server_name)    != IS_STRING) server_name    = NULL;
 
 	if (hat_name && *hat_name) {
 		subprofiles[idx++] = hat_name;
 	}
 
-	if (request_method && server_name && script_name) {
-		mss = emalloc(Z_STRLEN_PP(request_method) + 1 + Z_STRLEN_PP(server_name) + 1 + Z_STRLEN_PP(script_name) + 1);
-		memcpy(mss, Z_STRVAL_PP(request_method), Z_STRLEN_PP(request_method));
-		memcpy(mss + Z_STRLEN_PP(request_method) + 1, Z_STRVAL_PP(server_name), Z_STRLEN_PP(server_name));
-		memcpy(mss + Z_STRLEN_PP(request_method) + 1 + Z_STRLEN_PP(server_name) + 1, Z_STRVAL_PP(script_name), Z_STRLEN_PP(script_name) + 1);
-		*(mss + Z_STRLEN_PP(request_method)) = '-';
-		*(mss + Z_STRLEN_PP(request_method) + 1 + Z_STRLEN_PP(server_name)) = '-';
+	if (server) {
+		char* req_m = NULL;
+		char* scr_n = NULL;
+		char* srv_n = NULL;
+		size_t req_m_len = 0;
+		size_t scr_n_len = 0;
+		size_t srv_n_len = 0;
 
-		subprofiles[idx++] = mss;
-	}
+#if PHP_MAJOR_VERSION < 7
+		zval** request_method  = NULL;
+		zval** script_name     = NULL;
+		zval** server_name     = NULL;
 
-	if (server_name && script_name) {
-		ss = emalloc(Z_STRLEN_PP(server_name) + 1 + Z_STRLEN_PP(script_name) + 1);
-		memcpy(ss, Z_STRVAL_PP(server_name), Z_STRLEN_PP(server_name));
-		memcpy(ss + Z_STRLEN_PP(server_name) + 1, Z_STRVAL_PP(script_name), Z_STRLEN_PP(script_name) + 1);
-		*(ss + Z_STRLEN_PP(server_name)) = '-';
+		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("REQUEST_METHOD"), zend_inline_hash_func(ZEND_STRS("REQUEST_METHOD")), (void**)&request_method);
+		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SCRIPT_NAME"),    zend_inline_hash_func(ZEND_STRS("SCRIPT_NAME")),    (void**)&script_name);
+		zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("SERVER_NAME"),    zend_inline_hash_func(ZEND_STRS("SERVER_NAME")),    (void**)&server_name);
 
-		subprofiles[idx++] = ss;
-	}
+		if (request_method && Z_TYPE_PP(request_method) == IS_STRING) {
+			req_m     = Z_STRVAL_PP(request_method);
+			req_m_len = Z_STRLEN_PP(request_method);
+		}
 
-	if (server_name) {
-		subprofiles[idx++] = Z_STRVAL_PP(server_name);
-	}
+		if (script_name && Z_TYPE_PP(script_name) == IS_STRING) {
+			scr_n     = Z_STRVAL_PP(script_name);
+			scr_n_len = Z_STRLEN_PP(script_name);
+		}
 
-	if (request_method && script_name) {
-		ms = emalloc(Z_STRLEN_PP(request_method) + 1 + Z_STRLEN_PP(script_name) + 1);
-		memcpy(ms, Z_STRVAL_PP(request_method), Z_STRLEN_PP(request_method));
-		memcpy(ms + Z_STRLEN_PP(request_method) + 1, Z_STRVAL_PP(script_name), Z_STRLEN_PP(script_name) + 1);
-		*(ms + Z_STRLEN_PP(request_method)) = '-';
+		if (server_name && Z_TYPE_PP(server_name) == IS_STRING) {
+			srv_n     = Z_STRVAL_PP(server_name);
+			srv_n_len = Z_STRLEN_PP(server_name);
+		}
+#else
+		zval* request_method = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("REQUEST_METHOD"));
+		zval* script_name    = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SCRIPT_NAME"));
+		zval* server_name    = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SERVER_NAME"));
 
-		subprofiles[idx++] = ms;
-	}
+		if (request_method && Z_TYPE_P(request_method) == IS_STRING) {
+			req_m     = Z_STRVAL_P(request_method);
+			req_m_len = Z_STRLEN_P(request_method);
+		}
 
-	if (script_name) {
-		subprofiles[idx++] = Z_STRVAL_PP(script_name);
+		if (script_name && Z_TYPE_P(script_name) == IS_STRING) {
+			scr_n     = Z_STRVAL_P(script_name);
+			scr_n_len = Z_STRLEN_P(script_name);
+		}
+
+		if (server_name && Z_TYPE_P(server_name) == IS_STRING) {
+			srv_n     = Z_STRVAL_P(server_name);
+			srv_n_len = Z_STRLEN_P(server_name);
+		}
+#endif
+
+		if (request_method && server_name && script_name) {
+			mss = emalloc(req_m_len + 1 + srv_n_len + 1 + scr_n_len + 1);
+			memcpy(mss, req_m, req_m_len);
+			memcpy(mss + req_m_len + 1, srv_n, srv_n_len);
+			memcpy(mss + req_m_len + 1 + srv_n_len + 1, scr_n, scr_n_len + 1);
+			*(mss + req_m_len) = '-';
+			*(mss + req_m_len + 1 + srv_n_len) = '-';
+
+			subprofiles[idx++] = mss;
+		}
+
+		if (server_name && script_name) {
+			ss = emalloc(srv_n_len + 1 + scr_n_len + 1);
+			memcpy(ss, srv_n, srv_n_len);
+			memcpy(ss + srv_n_len + 1, scr_n, scr_n_len + 1);
+			*(ss + srv_n_len) = '-';
+
+			subprofiles[idx++] = ss;
+		}
+
+		if (server_name) {
+			subprofiles[idx++] = srv_n;
+		}
+
+		if (request_method && script_name) {
+			ms = emalloc(req_m_len + 1 + scr_n_len + 1);
+			memcpy(ms, req_m, req_m_len);
+			memcpy(ms + req_m_len + 1, scr_n, scr_n_len + 1);
+			*(ms + req_m_len) = '-';
+
+			subprofiles[idx++] = ms;
+		}
+
+		if (script_name) {
+			subprofiles[idx++] = scr_n;
+		}
 	}
 
 	if (default_hat_name && *default_hat_name) {
@@ -158,21 +206,47 @@ static void do_change_hat(zval** server, unsigned long int* token TSRMLS_DC)
 static PHP_RINIT_FUNCTION(apparmor)
 {
 	unsigned long int token;
+#if PHP_MAJOR_VERSION < 7
 	zval** server;
+#else
+	zval* server;
+#endif
 
 	if (PG(auto_globals_jit)) {
+#if PHP_MAJOR_VERSION < 7
 		zend_is_auto_global_quick(ZEND_STRL("_SERVER"), zend_inline_hash_func(ZEND_STRS("_SERVER")) TSRMLS_CC);
+#else
+		zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+#endif
 	}
 
-	if (AAG(allow_server_aa)) {
-		if (SUCCESS == zend_hash_quick_find(&EG(symbol_table), ZEND_STRS("_SERVER"), zend_inline_hash_func(ZEND_STRS("_SERVER")), (void**)&server) && Z_TYPE_PP(server) == IS_ARRAY) {
-			zval** aa_hat_name;
+#if PHP_MAJOR_VERSION < 7
+	if (SUCCESS != zend_hash_quick_find(&EG(symbol_table), ZEND_STRS("_SERVER"), zend_inline_hash_func(ZEND_STRS("_SERVER")), (void**)&server) || Z_TYPE_PP(server) != IS_ARRAY) {
+		server = NULL;
+	}
 
-			if (SUCCESS == zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("AA_HAT_NAME"), zend_inline_hash_func(ZEND_STRS("AA_HAT_NAME")), (void**)&aa_hat_name) && Z_TYPE_PP(aa_hat_name) == IS_STRING) {
-				zend_alter_ini_entry_ex(ZEND_STRS("aa.hat_name"), Z_STRVAL_PP(aa_hat_name), Z_STRLEN_PP(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1 TSRMLS_CC);
-			}
+	if (AAG(allow_server_aa) && server) {
+		zval** aa_hat_name;
+
+		if (SUCCESS == zend_hash_quick_find(Z_ARRVAL_PP(server), ZEND_STRS("AA_HAT_NAME"), zend_inline_hash_func(ZEND_STRS("AA_HAT_NAME")), (void**)&aa_hat_name) && Z_TYPE_PP(aa_hat_name) == IS_STRING) {
+			zend_alter_ini_entry_ex(ZEND_STRS("aa.hat_name"), Z_STRVAL_PP(aa_hat_name), Z_STRLEN_PP(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1 TSRMLS_CC);
 		}
 	}
+#else
+	server = zend_hash_str_find(&EG(symbol_table), ZEND_STRL("_SERVER"));
+	if (server && Z_TYPE_P(server) != IS_ARRAY) {
+		server = NULL;
+	}
+
+	if (AAG(allow_server_aa) && server) {
+		zval* aa_hat_name = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("AA_HAT_NAME"));
+		if (aa_hat_name && Z_TYPE_P(aa_hat_name) == IS_STRING) {
+			zend_string* key = zend_string_init(ZEND_STRL("aa.hat_name"), 0);
+			zend_alter_ini_entry_ex(key, Z_STR_P(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1);
+			zend_string_release(key);
+		}
+	}
+#endif
 
 	token = generate_token();
 	if (!token) {
@@ -203,7 +277,9 @@ static PHP_MINFO_FUNCTION(apparmor)
 
 static ZEND_MODULE_POST_ZEND_DEACTIVATE_D(apparmor)
 {
+#if PHP_MAJOR_VERSION < 7
 	TSRMLS_FETCH();
+#endif
 	unsigned long int magic_token = AAG(magic_token);
 
 	if (magic_token != 0) {
@@ -216,7 +292,7 @@ static ZEND_MODULE_POST_ZEND_DEACTIVATE_D(apparmor)
 
 zend_module_entry apparmor_module_entry = {
 	STANDARD_MODULE_HEADER_EX,
-	ini_entries,
+	NULL,
 	NULL,
 	PHP_APPARMOR_EXTNAME,
 	NULL,
