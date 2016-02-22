@@ -16,4 +16,5 @@ install:
   - sudo apt-get -qq install libapparmor-dev
 
 script:
-  - phpize && ./configure --silent && make --silent CFLAGS+="-Wall -Wextra -Wno-unused-parameter"
+  - ./travis/script.sh
+
