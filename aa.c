@@ -286,6 +286,18 @@ static PHP_RINIT_FUNCTION(apparmor)
 	return SUCCESS;
 }
 
+static PHP_RSHUTDOWN_FUNCTION(apparmor)
+{
+	unsigned long int magic_token = AAG(magic_token);
+
+	if (magic_token != 0) {
+		aa_change_hat(NULL, magic_token);
+		AAG(magic_token) = 0;
+	}
+
+	return SUCCESS;
+}
+
 static PHP_GINIT_FUNCTION(apparmor)
 {
 	apparmor_globals->default_hat_name = NULL;
@@ -303,20 +315,6 @@ static PHP_MINFO_FUNCTION(apparmor)
 	DISPLAY_INI_ENTRIES();
 }
 
-static ZEND_MODULE_POST_ZEND_DEACTIVATE_D(apparmor)
-{
-#if PHP_MAJOR_VERSION < 7
-	TSRMLS_FETCH();
-#endif
-	unsigned long int magic_token = AAG(magic_token);
-
-	if (magic_token != 0) {
-		aa_change_hat(NULL, magic_token);
-		AAG(magic_token) = 0;
-	}
-
-	return SUCCESS;
-}
 
 zend_module_entry apparmor_module_entry = {
 	STANDARD_MODULE_HEADER_EX,
@@ -327,13 +325,13 @@ zend_module_entry apparmor_module_entry = {
 	PHP_MINIT(apparmor),
 	PHP_MSHUTDOWN(apparmor),
 	PHP_RINIT(apparmor),
-	NULL,
+	PHP_RSHUTDOWN(apparmor),
 	PHP_MINFO(apparmor),
 	PHP_APPARMOR_EXTVER,
 	ZEND_MODULE_GLOBALS(apparmor),
 	PHP_GINIT(apparmor),
 	NULL,
-	ZEND_MODULE_POST_ZEND_DEACTIVATE_N(apparmor),
+	NULL,
 	STANDARD_MODULE_PROPERTIES_EX
 };
 
