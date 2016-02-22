@@ -1,6 +1,7 @@
 #!/bin/sh
 
 set -e
+set -x
 
 DIR=$(readlink -enq $(dirname $0))
 
