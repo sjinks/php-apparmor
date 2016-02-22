@@ -11,6 +11,14 @@
 ZEND_DECLARE_MODULE_GLOBALS(apparmor);
 
 static int g_fd = -1;
+#if PHP_MAJOR_VERSION >= 7
+static zend_string* zs__SERVER        = NULL;
+static zend_string* zs_REQUEST_METHOD = NULL;
+static zend_string* zs_SERVER_NAME    = NULL;
+static zend_string* zs_SCRIPT_NAME    = NULL;
+static zend_string* zs_AA_HAT_NAME    = NULL;
+static zend_string* zs_aa_hat_name    = NULL; /* sorry */
+#endif
 
 PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("aa.default_hat_name", "",   PHP_INI_SYSTEM,                  OnUpdateString, default_hat_name, zend_apparmor_globals, apparmor_globals)
@@ -23,10 +31,21 @@ static PHP_MINIT_FUNCTION(apparmor)
 	REGISTER_INI_ENTRIES();
 
 	g_fd = open("/dev/urandom", O_RDONLY);
-	if (g_fd < 0) {
+	if (UNEXPECTED(g_fd < 0)) {
 		zend_error(E_CORE_ERROR, "Failed to open /dev/urandom: %s\n", strerror(errno));
 		return FAILURE;
 	}
+
+#if PHP_MAJOR_VERSION >= 7
+	/* zend_string_init() won't return NULL, zend_out_of_memory() will be called on failure */
+	/* Calls to zend_inline_hash_func() will be optimized by the compiler */
+	zs__SERVER        = zend_string_init(ZEND_STRL("_SERVER"),        1); ZSTR_H(zs__SERVER)        = zend_inline_hash_func(ZEND_STRL("_SERVER"));
+	zs_REQUEST_METHOD = zend_string_init(ZEND_STRL("REQUEST_METHOD"), 1); ZSTR_H(zs_REQUEST_METHOD) = zend_inline_hash_func(ZEND_STRL("REQUEST_METHOD"));
+	zs_SERVER_NAME    = zend_string_init(ZEND_STRL("SERVER_NAME"),    1); ZSTR_H(zs_SERVER_NAME)    = zend_inline_hash_func(ZEND_STRL("SERVER_NAME"));
+	zs_SCRIPT_NAME    = zend_string_init(ZEND_STRL("SCRIPT_NAME"),    1); ZSTR_H(zs_SCRIPT_NAME)    = zend_inline_hash_func(ZEND_STRL("SCRIPT_NAME"));
+	zs_AA_HAT_NAME    = zend_string_init(ZEND_STRL("AA_HAT_NAME"),    1); ZSTR_H(zs_AA_HAT_NAME)    = zend_inline_hash_func(ZEND_STRL("AA_HAT_NAME"));
+	zs_aa_hat_name    = zend_string_init(ZEND_STRL("aa.hat_name"),    1); ZSTR_H(zs_aa_hat_name)    = zend_inline_hash_func(ZEND_STRL("aa.hat_name"));
+#endif
 
 	return SUCCESS;
 }
@@ -35,7 +54,18 @@ static PHP_MSHUTDOWN_FUNCTION(apparmor)
 {
 	UNREGISTER_INI_ENTRIES();
 
-	if (g_fd != -1) {
+#if PHP_MAJOR_VERSION >= 7
+	if (EXPECTED(zs__SERVER)) {
+		zend_string_release(zs__SERVER);
+		zend_string_release(zs_REQUEST_METHOD);
+		zend_string_release(zs_SERVER_NAME);
+		zend_string_release(zs_SCRIPT_NAME);
+		zend_string_release(zs_AA_HAT_NAME);
+		zend_string_release(zs_aa_hat_name);
+	}
+#endif
+
+	if (EXPECTED(g_fd != -1)) {
 		close(g_fd);
 	}
 
@@ -51,21 +81,21 @@ unsigned long int generate_token(void)
 
 	while (read_bytes < size) {
 		ssize_t n = read(g_fd, buf + read_bytes, size - read_bytes);
-		if (n < 0) {
+		if (UNEXPECTED(n < 0)) {
 			break;
 		}
 
 		read_bytes += n;
 	}
 
-	if (read_bytes != size) {
+	if (UNEXPECTED(read_bytes != size)) {
 		zend_error(E_CORE_ERROR, "Could not gather sufficient random data");
 		return 0;
 	}
 
-	if (!token) {
+	if (UNEXPECTED(!token)) {
 		token = random();
-		if (!token) {
+		if (UNEXPECTED(!token)) {
 			token = 1;
 		}
 	}
@@ -81,7 +111,7 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 #if PHP_MAJOR_VERSION < 7
 	zval* server           = PG(http_globals)[TRACK_VARS_SERVER];
 #else
-	zval* server           = &PG(http_globals)[TRACK_VARS_SERVER];
+	zval server            = PG(http_globals)[TRACK_VARS_SERVER];
 #endif
 	char* default_hat_name = AAG(default_hat_name);
 	char* hat_name         = AAG(hat_name);
@@ -95,7 +125,10 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 		subprofiles[idx++] = hat_name;
 	}
 
-	if (server) {
+#if PHP_MAJOR_VERSION < 7
+	if (server)
+#endif
+	{
 		char* req_m = NULL;
 		char* scr_n = NULL;
 		char* srv_n = NULL;
@@ -127,9 +160,9 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 			srv_n_len = Z_STRLEN_PP(server_name);
 		}
 #else
-		zval* request_method = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("REQUEST_METHOD"));
-		zval* script_name    = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SCRIPT_NAME"));
-		zval* server_name    = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("SERVER_NAME"));
+		zval* request_method = zend_hash_find(Z_ARRVAL(server), zs_REQUEST_METHOD);
+		zval* script_name    = zend_hash_find(Z_ARRVAL(server), zs_SCRIPT_NAME);
+		zval* server_name    = zend_hash_find(Z_ARRVAL(server), zs_SERVER_NAME);
 
 		if (request_method && Z_TYPE_P(request_method) == IS_STRING) {
 			req_m     = Z_STRVAL_P(request_method);
@@ -189,7 +222,7 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 		subprofiles[idx++] = default_hat_name;
 	}
 
-	if (idx) {
+	if (EXPECTED(idx)) {
 #if 0
 		for (size_t i=0; i<idx; ++i) {
 			printf("%s\n", subprofiles[i]);
@@ -210,27 +243,19 @@ static void do_change_hat(unsigned long int* token TSRMLS_DC)
 static PHP_RINIT_FUNCTION(apparmor)
 {
 	unsigned long int token;
+#if PHP_MAJOR_VERSION < 7
 	zval* server;
+#else
+	zval server;
+#endif
 
+#if PHP_MAJOR_VERSION < 7
 	if (PG(auto_globals_jit)) {
-#if PHP_MAJOR_VERSION < 7
 		zend_is_auto_global_quick(ZEND_STRL("_SERVER"), zend_inline_hash_func(ZEND_STRS("_SERVER")) TSRMLS_CC);
-#else
-		zend_is_auto_global_str(ZEND_STRL("_SERVER"));
-#endif
 	}
 
-#if PHP_MAJOR_VERSION < 7
 	server = PG(http_globals)[TRACK_VARS_SERVER];
-#else
-	server = &PG(http_globals)[TRACK_VARS_SERVER];
-#endif
-	if (Z_TYPE_P(server) != IS_ARRAY) {
-		return SUCCESS;
-	}
-
-#if PHP_MAJOR_VERSION < 7
-	if (AAG(allow_server_aa) && server) {
+	if (AAG(allow_server_aa) && server && Z_TYPE_P(server) == IS_ARRAY) {
 		zval** aa_hat_name;
 
 		if (SUCCESS == zend_hash_quick_find(Z_ARRVAL_P(server), ZEND_STRS("AA_HAT_NAME"), zend_inline_hash_func(ZEND_STRS("AA_HAT_NAME")), (void**)&aa_hat_name) && Z_TYPE_PP(aa_hat_name) == IS_STRING) {
@@ -238,12 +263,15 @@ static PHP_RINIT_FUNCTION(apparmor)
 		}
 	}
 #else
-	if (AAG(allow_server_aa) && server) {
-		zval* aa_hat_name = zend_hash_str_find(Z_ARRVAL_P(server), ZEND_STRL("AA_HAT_NAME"));
+	if (PG(auto_globals_jit)) {
+		zend_is_auto_global(zs__SERVER);
+	}
+
+	server = &PG(http_globals)[TRACK_VARS_SERVER];
+	if (AAG(allow_server_aa) && Z_TYPE(server) == IS_ARRAY) {
+		zval* aa_hat_name = zend_hash_find(Z_ARRVAL(server), zs_AA_HAT_NAME);
 		if (aa_hat_name && Z_TYPE_P(aa_hat_name) == IS_STRING) {
-			zend_string* key = zend_string_init(ZEND_STRL("aa.hat_name"), 0);
-			zend_alter_ini_entry_ex(key, Z_STR_P(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1);
-			zend_string_release(key);
+			zend_alter_ini_entry_ex(zs_aa_hat_name, Z_STR_P(aa_hat_name), ZEND_INI_SYSTEM, PHP_INI_STAGE_ACTIVATE, 1);
 		}
 	}
 #endif
