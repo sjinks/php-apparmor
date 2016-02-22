@@ -16,5 +16,5 @@ install:
   - sudo apt-get -qq install libapparmor-dev
 
 script:
-  - ./travis/script.sh
+  - ./.travis/script.sh
 
