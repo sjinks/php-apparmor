@@ -15,4 +15,6 @@ make install
 php -i > /dev/null
 php -m > /dev/null
 
-(cd $DIR && php index.php > out.001 && cmp out.001 expected.001)
+php index.php > "$DIR/out.001"
+ls -lha "$DIR/"
+cmp "$DIR/out.001" "$DIR/expected.001"
