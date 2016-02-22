@@ -267,7 +267,7 @@ static PHP_RINIT_FUNCTION(apparmor)
 		zend_is_auto_global(zs__SERVER);
 	}
 
-	server = &PG(http_globals)[TRACK_VARS_SERVER];
+	server = PG(http_globals)[TRACK_VARS_SERVER];
 	if (AAG(allow_server_aa) && Z_TYPE(server) == IS_ARRAY) {
 		zval* aa_hat_name = zend_hash_find(Z_ARRVAL(server), zs_AA_HAT_NAME);
 		if (aa_hat_name && Z_TYPE_P(aa_hat_name) == IS_STRING) {
