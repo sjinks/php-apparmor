@@ -21,7 +21,7 @@ static zend_string* zs_aa_hat_name    = NULL; /* sorry */
 #endif
 
 PHP_INI_BEGIN()
-	STD_PHP_INI_ENTRY("aa.default_hat_name", "",   PHP_INI_SYSTEM,                  OnUpdateString, default_hat_name, zend_apparmor_globals, apparmor_globals)
+	STD_PHP_INI_ENTRY("aa.default_hat_name", "",   PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, default_hat_name, zend_apparmor_globals, apparmor_globals)
 	STD_PHP_INI_ENTRY("aa.hat_name",         "",   PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, hat_name,         zend_apparmor_globals, apparmor_globals)
 	STD_PHP_INI_ENTRY("aa.allow_server_aa",  "0",  PHP_INI_SYSTEM,                  OnUpdateLong,   allow_server_aa,  zend_apparmor_globals, apparmor_globals)
 PHP_INI_END()
