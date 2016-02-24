@@ -315,13 +315,50 @@ static PHP_MINFO_FUNCTION(apparmor)
 	DISPLAY_INI_ENTRIES();
 }
 
+static PHP_FUNCTION(aa_getcon)
+{
+	char* label = NULL;
+	char* mode;
+	int res;
+
+	if (UNEXPECTED(FAILURE == zend_parse_parameters_none())) {
+		RETURN_NULL();
+	}
+
+	res = aa_getcon(&label, &mode);
+	if (UNEXPECTED(-1 == res)) {
+		if (UNEXPECTED(label != NULL)) {
+			free(label);
+		}
+
+		RETURN_NULL();
+	}
+
+	array_init_size(return_value, 2);
+#if PHP_MAJOR_VERSION < 7
+	add_next_index_string(return_value, label, 1);
+	add_next_index_string(return_value, mode ? mode : "", 1);
+#else
+	add_next_index_string(return_value, label);
+	add_next_index_string(return_value, mode ? mode : "");
+#endif
+	free(label);
+}
+
+ZEND_BEGIN_ARG_INFO(arginfo_aa_getcon, 0)
+ZEND_END_ARG_INFO()
+
+static const zend_function_entry phpaa_functions[] = {
+	PHP_FE(aa_getcon, arginfo_aa_getcon)
+	PHP_FE_END
+};
 
 zend_module_entry apparmor_module_entry = {
 	STANDARD_MODULE_HEADER_EX,
 	NULL,
 	NULL,
 	PHP_APPARMOR_EXTNAME,
-	NULL,
+	phpaa_functions,
 	PHP_MINIT(apparmor),
 	PHP_MSHUTDOWN(apparmor),
 	PHP_RINIT(apparmor),
