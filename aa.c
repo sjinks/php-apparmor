@@ -30,7 +30,14 @@ static PHP_MINIT_FUNCTION(apparmor)
 {
 	REGISTER_INI_ENTRIES();
 
-	g_fd = open("/dev/urandom", O_RDONLY);
+	g_fd = open(
+		"/dev/urandom",
+		O_RDONLY
+#ifdef O_CLOEXEC
+		| O_CLOEXEC
+#endif
+	);
+
 	if (UNEXPECTED(g_fd < 0)) {
 		zend_error(E_CORE_ERROR, "Failed to open /dev/urandom: %s\n", strerror(errno));
 		return FAILURE;
