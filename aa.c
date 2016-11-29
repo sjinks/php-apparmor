@@ -79,7 +79,7 @@ static PHP_MSHUTDOWN_FUNCTION(apparmor)
 	return SUCCESS;
 }
 
-unsigned long int generate_token(void)
+static unsigned long int generate_token(void)
 {
 	unsigned long int token;
 	const size_t size = sizeof(token);
@@ -111,8 +111,8 @@ unsigned long int generate_token(void)
 }
 
 /*
-* hat_name, METHOD-SERVER-SCRIPT, SERVER-SCRIPT, SERVER, METHOD-SCRIPT, SCRIPT, default_hat_name
-*/
+ * hat_name, METHOD-SERVER-SCRIPT, SERVER-SCRIPT, SERVER, METHOD-SCRIPT, SCRIPT, default_hat_name
+ */
 static void do_change_hat(unsigned long int* token TSRMLS_DC)
 {
 #if PHP_MAJOR_VERSION < 7
